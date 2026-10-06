@@ -1,191 +1,81 @@
-import sqlite3
-import tkinter as tk
+import sqlite3, tkinter as tk
 from tkinter import messagebox
-from tkinter import ttk
 
-# -----------------------------
-# Base de datos
-# -----------------------------
-DB_NAME = "usuarios.db"
+DB = "usuarios.db"
 
-def crear_tabla():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-    """)
-    
-    # Insertar usuarios por defecto si no existen
-    cursor.execute("SELECT COUNT(*) FROM usuarios")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO usuarios (usuario, password) VALUES (?, ?)", ("admin", "admin123"))
-        cursor.execute("INSERT INTO usuarios (usuario, password) VALUES (?, ?)", ("profe", "profe123"))
-    
+def init_db():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("CREATE TABLE IF NOT EXISTS usuarios (usuario TEXT UNIQUE, password TEXT)")
+    c.execute("SELECT COUNT(*) FROM usuarios")
+    if c.fetchone()[0] == 0:
+        c.execute("INSERT INTO usuarios VALUES ('admin','admin123'),('profe','profe123')")
     conn.commit()
     conn.close()
 
-def validar_usuario(usuario, password):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT usuario FROM usuarios WHERE usuario = ? AND password = ?", (usuario, password))
-    resultado = cursor.fetchone()
+def check(u, p):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT * FROM usuarios WHERE usuario=? AND password=?", (u, p))
+    r = c.fetchone() is not None
     conn.close()
-    return resultado is not None
+    return r
 
-# -----------------------------
-# Ventana Login
-# -----------------------------
-class LoginApp(tk.Tk):
+class Login(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Inicio de sesión")
-        self.geometry("420x420")
+        self.title("Login")
+        self.geometry("380x360")
         self.configure(bg="#F4F6FF")
         self.resizable(False, False)
-
-        # Color principal
-        self.primary = "#0100FA"
-        self.primary_dark = "#0000C7"
-        self.bg = "#F4F6FF"
-        self.card = "#FFFFFF"
-        self.text = "#1B1B1B"
-
-        self.crear_ui()
-
-    def crear_ui(self):
-        # Contenedor principal
-        container = tk.Frame(self, bg=self.bg, padx=30, pady=30)
-        container.pack(fill="both", expand=True)
-
-        # Logo / título
-        title = tk.Label(
-            container,
-            text="Iniciar sesión",
-            bg=self.bg,
-            fg=self.primary,
-            font=("Arial", 24, "bold")
-        )
-        title.pack(pady=(10, 25))
-
-        # Tarjeta del formulario
-        card = tk.Frame(container, bg=self.card, padx=25, pady=25, bd=0)
-        card.pack(fill="x", ipady=8)
-
-        # Usuario
-        tk.Label(card, text="Usuario", bg=self.card, fg=self.text, font=("Arial", 11, "bold")).pack(anchor="w", pady=(0, 5))
-        self.usuario_entry = tk.Entry(
-            card,
-            font=("Arial", 12),
-            bd=1,
-            relief="solid",
-            bg="#F7F8FF"
-        )
-        self.usuario_entry.pack(fill="x", pady=(0, 15))
-
-        # Contraseña
-        tk.Label(card, text="Contraseña", bg=self.card, fg=self.text, font=("Arial", 11, "bold")).pack(anchor="w", pady=(0, 5))
-        self.password_entry = tk.Entry(
-            card,
-            font=("Arial", 12),
-            bd=1,
-            relief="solid",
-            bg="#F7F8FF",
-            show="*"
-        )
-        self.password_entry.pack(fill="x", pady=(0, 20))
-
-        # Botón login
-        btn_login = tk.Button(
-            card,
-            text="Entrar",
-            bg=self.primary,
-            fg="white",
-            font=("Arial", 12, "bold"),
-            bd=0,
-            padx=20,
-            pady=10,
-            cursor="hand2",
-            command=self.login
-        )
-        btn_login.pack(fill="x")
-
-        # Enter en campos
-        self.usuario_entry.bind("<Return>", lambda event: self.login())
-        self.password_entry.bind("<Return>", lambda event: self.login())
-
+        
+        f = tk.Frame(self, bg="#F4F6FF", padx=30, pady=30)
+        f.pack(fill="both", expand=True)
+        
+        tk.Label(f, text="Iniciar sesión", font=("Arial", 20, "bold"), fg="#0100FA", bg="#F4F6FF").pack(pady=(10, 20))
+        
+        card = tk.Frame(f, bg="white", padx=20, pady=20)
+        card.pack(fill="x")
+        
+        tk.Label(card, text="Usuario", bg="white", font=("Arial", 10, "bold")).pack(anchor="w", pady=(0, 3))
+        self.u = tk.Entry(card, font=("Arial", 11), bg="#F7F8FF")
+        self.u.pack(fill="x", pady=(0, 12))
+        
+        tk.Label(card, text="Contraseña", bg="white", font=("Arial", 10, "bold")).pack(anchor="w", pady=(0, 3))
+        self.p = tk.Entry(card, font=("Arial", 11), bg="#F7F8FF", show="*")
+        self.p.pack(fill="x", pady=(0, 15))
+        
+        tk.Button(card, text="Entrar", bg="#0100FA", fg="white", font=("Arial", 11, "bold"), bd=0, pady=8, command=self.login).pack(fill="x")
+        
+        self.u.bind("<Return>", lambda e: self.login())
+        self.p.bind("<Return>", lambda e: self.login())
+    
     def login(self):
-        usuario = self.usuario_entry.get().strip()
-        password = self.password_entry.get().strip()
-
-        if not usuario or not password:
-            messagebox.showwarning("Campos vacíos", "Debes completar usuario y contraseña.")
+        u, p = self.u.get().strip(), self.p.get().strip()
+        if not u or not p:
+            messagebox.showwarning("Error", "Completa los campos")
             return
-
-        if validar_usuario(usuario, password):
+        if check(u, p):
             self.destroy()
-            PantallaLogueado(usuario).mainloop()
+            Welcome(u).mainloop()
         else:
-            messagebox.showerror("Error", "Usuario o contraseña incorrectos.")
+            messagebox.showerror("Error", "Credenciales incorrectas")
 
-# -----------------------------
-# Ventana logueado
-# -----------------------------
-class PantallaLogueado(tk.Tk):
-    def __init__(self, usuario):
+class Welcome(tk.Tk):
+    def __init__(self, u):
         super().__init__()
         self.title("Bienvenido")
-        self.geometry("450x300")
+        self.geometry("350x250")
         self.configure(bg="#F4F6FF")
         self.resizable(False, False)
+        
+        f = tk.Frame(self, bg="#F4F6FF", padx=30, pady=30)
+        f.pack(fill="both", expand=True)
+        
+        tk.Label(f, text=f"¡Bienvenido, {u}!", font=("Arial", 20, "bold"), fg="#0100FA", bg="#F4F6FF").pack(pady=20)
+        tk.Label(f, text="Sesión iniciada correctamente", font=("Arial", 12), fg="#1B1B1B", bg="#F4F6FF").pack(pady=10)
+        tk.Button(f, text="Cerrar sesión", bg="#0100FA", fg="white", font=("Arial", 10, "bold"), bd=0, pady=8, command=lambda: self.destroy() or Login().mainloop()).pack(pady=20)
 
-        container = tk.Frame(self, bg="#F4F6FF", padx=30, pady=30)
-        container.pack(fill="both", expand=True)
-
-        lbl = tk.Label(
-            container,
-            text=f"¡Bienvenido, {usuario}!",
-            bg="#F4F6FF",
-            fg="#0100FA",
-            font=("Arial", 24, "bold")
-        )
-        lbl.pack(pady=(30, 20))
-
-        lbl2 = tk.Label(
-            container,
-            text="Has iniciado sesión correctamente.",
-            bg="#F4F6FF",
-            fg="#1B1B1B",
-            font=("Arial", 14)
-        )
-        lbl2.pack(pady=10)
-
-        btn = tk.Button(
-            container,
-            text="Cerrar sesión",
-            bg="#0100FA",
-            fg="white",
-            font=("Arial", 11, "bold"),
-            bd=0,
-            padx=20,
-            pady=10,
-            cursor="hand2",
-            command=self.cerrar_sesion
-        )
-        btn.pack(pady=25)
-
-    def cerrar_sesion(self):
-        self.destroy()
-        app = LoginApp()
-        app.mainloop()
-
-# -----------------------------
-# Inicio
-# -----------------------------
 if __name__ == "__main__":
-    crear_tabla()
-    app = LoginApp()
-    app.mainloop()
+    init_db()
+    Login().mainloop()
