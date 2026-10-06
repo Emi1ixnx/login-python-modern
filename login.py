@@ -1,9 +1,13 @@
 import sqlite3, tkinter as tk
 from tkinter import messagebox
+import hashlib
 
 DB = "usuarios.db"
 
-# Base de datos
+
+def hash_password(p):
+    return hashlib.sha256(p.encode()).hexdigest()
+
 
 def init_db():
     conn = sqlite3.connect(DB)
@@ -11,7 +15,8 @@ def init_db():
     c.execute("CREATE TABLE IF NOT EXISTS usuarios (usuario TEXT UNIQUE, password TEXT)")
     c.execute("SELECT COUNT(*) FROM usuarios")
     if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO usuarios VALUES ('admin','admin123'),('profe','profe123')")
+        c.execute("INSERT INTO usuarios VALUES (?, ?)", ("admin", hash_password("admin123")))
+        c.execute("INSERT INTO usuarios VALUES (?, ?)", ("profe", hash_password("profe123")))
     conn.commit()
     conn.close()
 
@@ -19,7 +24,7 @@ def init_db():
 def check(u, p):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("SELECT * FROM usuarios WHERE usuario=? AND password=?", (u, p))
+    c.execute("SELECT * FROM usuarios WHERE usuario=? AND password=?", (u, hash_password(p)))
     r = c.fetchone() is not None
     conn.close()
     return r
@@ -57,7 +62,8 @@ class Login(tk.Tk):
         self.p = tk.Entry(card, font=("Arial", 11), bg="#F7F8FF", show="*")
         self.p.pack(fill="x", pady=(0, 15))
 
-        tk.Button(card, text="Entrar", bg="#0100FA", fg="white", font=("Arial", 11, "bold"), bd=0, pady=8, command=self.login).pack(fill="x")
+        tk.Button(card, text="Entrar", bg="#0100FA", fg="white", font=("Arial", 11, "bold"), bd=0, pady=8,
+                  command=self.login).pack(fill="x")
 
         self.u.bind("<Return>", lambda e: self.login())
         self.p.bind("<Return>", lambda e: self.login())
@@ -87,7 +93,8 @@ class Welcome(tk.Tk):
 
         tk.Label(f, text=f"¡Bienvenido, {u}!", font=("Arial", 20, "bold"), fg="#0100FA", bg="#F4F6FF").pack(pady=20)
         tk.Label(f, text="Sesión iniciada correctamente", font=("Arial", 12), fg="#1B1B1B", bg="#F4F6FF").pack(pady=10)
-        tk.Button(f, text="Cerrar sesión", bg="#0100FA", fg="white", font=("Arial", 10, "bold"), bd=0, pady=8, command=lambda: self.destroy() or Login().mainloop()).pack(pady=20)
+        tk.Button(f, text="Cerrar sesión", bg="#0100FA", fg="white", font=("Arial", 10, "bold"), bd=0, pady=8,
+                  command=lambda: self.destroy() or Login().mainloop()).pack(pady=20)
 
 
 if __name__ == "__main__":
